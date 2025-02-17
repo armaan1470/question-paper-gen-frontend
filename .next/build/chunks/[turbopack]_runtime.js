@@ -351,15 +351,15 @@ async function externalImport(id) {
         // compilation error.
         throw new Error(`Failed to load external module ${id}: ${err}`);
     }
-    if (raw && raw.__esModule && raw.default && 'default' in raw.default) {
+    if (raw && raw.__esModule && raw.default && "default" in raw.default) {
         return interopEsm(raw.default, createNS(raw), true);
     }
     return raw;
 }
-function externalRequire(id, thunk, esm = false) {
+function externalRequire(id, esm = false) {
     let raw;
     try {
-        raw = thunk();
+        raw = require(id);
     } catch (err) {
         // TODO(alexkirsz) This can happen when a client-side module tries to load
         // an external module we don't provide a shim for (e.g. querystring, url).
@@ -442,6 +442,7 @@ function stringifySourceInfo(source) {
 }
 const url = require("url");
 const fs = require("fs/promises");
+const vm = require("vm");
 const moduleFactories = Object.create(null);
 const moduleCache = Object.create(null);
 /**
@@ -510,9 +511,7 @@ async function loadChunkAsync(source, chunkData) {
         const module1 = {
             exports: {}
         };
-        // TODO: Use vm.runInThisContext once our minimal supported Node.js version includes https://github.com/nodejs/node/pull/52153
-        // eslint-disable-next-line no-eval -- Can't use vm.runInThisContext due to https://github.com/nodejs/node/issues/52102
-        (0, eval)("(function(module, exports, require, __dirname, __filename) {" + contents + "\n})" + "\n//# sourceURL=" + url.pathToFileURL(resolved))(module1, module1.exports, localRequire, path.dirname(resolved), resolved);
+        vm.runInThisContext("(function(module, exports, require, __dirname, __filename) {" + contents + "\n})", resolved)(module1, module1.exports, localRequire, path.dirname(resolved), resolved);
         const chunkModules = module1.exports;
         for (const [moduleId, moduleFactory] of Object.entries(chunkModules)){
             if (!moduleFactories[moduleId]) {
